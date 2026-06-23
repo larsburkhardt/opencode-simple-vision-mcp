@@ -1,4 +1,4 @@
-# Vision MCP Server
+# Simple Vision MCP Server for Opencode
 
 MCP server for [OpenCode](https://opencode.ai) that adds vision capabilities — analyze local PNG, JPG, WebP, GIF, HEIC and SVG files via the Google Gemini API.
 
