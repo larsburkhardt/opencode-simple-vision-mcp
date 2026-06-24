@@ -78,7 +78,7 @@ server.tool(
     mkdirSync(savePath.substring(0, savePath.lastIndexOf("/")), { recursive: true });
 
     const response = await genAINew.models.generateContent({
-      model: "model: gemini-3.1-flash-image",
+      model: "gemini-3.1-flash-image-preview",
       contents: prompt,
       config: { responseModalities: ["Text", "Image"] },
     });
