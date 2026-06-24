@@ -1,13 +1,13 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
-import { readFileSync, existsSync } from "fs";
-import { resolve, extname } from "path";
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
+import { resolve, extname, join } from "path";
 import { config } from "dotenv";
 import sharp from "sharp";
 
-// .env laden — Pfad relativ zur server.mjs-Datei
 config({ path: new URL(".env", import.meta.url).pathname });
 
 const apiKey = process.env.GEMINI_API_KEY;
@@ -16,13 +16,18 @@ if (!apiKey) {
   process.exit(1);
 }
 
+// Analyse: alter Client (funktioniert, bewährt)
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({
+const analysisModel = genAI.getGenerativeModel({
   model: process.env.GEMINI_MODEL ?? "gemini-3.5-flash",
 });
 
-const server = new McpServer({ name: "vision", version: "1.0.0" });
+// Generierung: neues unified SDK (nötig für Image Generation)
+const genAINew = new GoogleGenAI({ apiKey });
 
+const server = new McpServer({ name: "vision", version: "2.0.0" });
+
+// ─── Tool 1: Bild analysieren ────────────────────────────────────────
 server.tool(
   "analyze_image",
   "Analyze a local image file (PNG, JPG, WebP, GIF, HEIC, SVG) and return a description",
@@ -32,41 +37,73 @@ server.tool(
   },
   async ({ imagePath, prompt }) => {
     const absPath = resolve(imagePath);
-
     if (!existsSync(absPath)) {
       return { content: [{ type: "text", text: `File not found: ${absPath}` }] };
     }
-
     const mimeMap = {
-      ".jpg":  "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".png":  "image/png",
-      ".webp": "image/webp",
-      ".gif":  "image/gif",
-      ".heic": "image/heic",
-      ".heif": "image/heif",
+      ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+      ".webp": "image/webp", ".gif": "image/gif",
+      ".heic": "image/heic", ".heif": "image/heif",
     };
-
     const ext = extname(absPath).toLowerCase();
     let mimeType = mimeMap[ext] ?? "image/jpeg";
     let imageBuffer = readFileSync(absPath);
 
-    // SVG → PNG konvertieren, da Gemini SVG (image/svg+xml) nicht unterstützt.
-    // sharp rastert das SVG mit der in viewBox definierten Auflösung;
-    // resize(2048) stellt eine ausreichende Qualität auch bei kleinen viewBox-Werten sicher.
     if (ext === ".svg") {
       imageBuffer = await sharp(imageBuffer).resize(2048).png().toBuffer();
       mimeType = "image/png";
     }
 
-    const imageData = imageBuffer.toString("base64");
-
-    const result = await model.generateContent([
+    const result = await analysisModel.generateContent([
       prompt ?? "Describe this image in detail.",
-      { inlineData: { data: imageData, mimeType } },
+      { inlineData: { data: imageBuffer.toString("base64"), mimeType } },
     ]);
-
     return { content: [{ type: "text", text: result.response.text() }] };
+  }
+);
+
+// ─── Tool 2: Bild generieren ─────────────────────────────────────────
+server.tool(
+  "generate_image",
+  "Generate an image from a text prompt using Gemini and save it to disk",
+  {
+    prompt: z.string().describe("Text prompt describing the image to generate"),
+    outputPath: z.string().optional().describe("Absolute path to save the PNG (default: ~/Desktop/generated_<timestamp>.png)"),
+  },
+  async ({ prompt, outputPath }) => {
+    const savePath = outputPath
+      ? resolve(outputPath)
+      : join(process.env.HOME ?? "/tmp", "Desktop", `generated_${Date.now()}.png`);
+
+    mkdirSync(savePath.substring(0, savePath.lastIndexOf("/")), { recursive: true });
+
+    const response = await genAINew.models.generateContent({
+      model: "model: gemini-3.1-flash-image",
+      contents: prompt,
+      config: { responseModalities: ["Text", "Image"] },
+    });
+
+    let savedPath = null;
+    let textResponse = "";
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        writeFileSync(savePath, Buffer.from(part.inlineData.data, "base64"));
+        savedPath = savePath;
+      } else if (part.text) {
+        textResponse = part.text;
+      }
+    }
+
+    if (savedPath) {
+      return {
+        content: [{
+          type: "text",
+          text: `Image saved to: ${savedPath}${textResponse ? `\n\n${textResponse}` : ""}`,
+        }],
+      };
+    }
+    return { content: [{ type: "text", text: "No image was generated. Try a different prompt." }] };
   }
 );
 
