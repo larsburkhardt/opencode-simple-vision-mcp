@@ -4,11 +4,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
-import { resolve, extname, join } from "path";
+import { resolve, extname, join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { homedir } from "os";
 import { config } from "dotenv";
 import sharp from "sharp";
 
-config({ path: new URL(".env", import.meta.url).pathname });
+config({ path: fileURLToPath(new URL(".env", import.meta.url)) });
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -71,11 +73,20 @@ server.tool(
     outputPath: z.string().optional().describe("Absolute path to save the PNG (default: ~/Desktop/generated_<timestamp>.png)"),
   },
   async ({ prompt, outputPath }) => {
+    function getDefaultOutputDir() {
+      const candidates = [
+        join(homedir(), "Desktop"),
+        join(homedir(), "Documents"),
+        homedir()
+      ];
+      return candidates.find(existsSync) ?? homedir();
+    }
+
     const savePath = outputPath
       ? resolve(outputPath)
-      : join(process.env.HOME ?? "/tmp", "Desktop", `generated_${Date.now()}.png`);
+      : join(getDefaultOutputDir(), `generated_${Date.now()}.png`);
 
-    mkdirSync(savePath.substring(0, savePath.lastIndexOf("/")), { recursive: true });
+    mkdirSync(dirname(savePath), { recursive: true });
 
     const response = await genAINew.models.generateContent({
       model: "gemini-3.1-flash-image-preview",
