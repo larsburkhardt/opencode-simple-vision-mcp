@@ -14,7 +14,7 @@ config({ path: fileURLToPath(new URL(".env", import.meta.url)) });
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
-  process.stderr.write("ERROR: GEMINI_API_KEY nicht gesetzt. Prüfe ~/mcp-vision/.env\n");
+  process.stderr.write("ERROR: GEMINI_API_KEY nicht gesetzt. Prüfe die .env-Datei im Projektverzeichnis\n");
   process.exit(1);
 }
 

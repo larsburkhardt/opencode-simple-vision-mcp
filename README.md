@@ -1,6 +1,6 @@
-# Simple Vision MCP Server for Opencode
+# opencode-simple-vision-mcp — Vision MCP Server for Opencode
 
-MCP server for [OpenCode](https://opencode.ai) that adds vision capabilities — analyze local PNG, JPG, WebP, GIF, HEIC and SVG files via the Google Gemini API.
+Cross-platform MCP server (macOS & Windows) for [OpenCode](https://opencode.ai) that adds vision capabilities — analyze local PNG, JPG, WebP, GIF, HEIC and SVG files via the Google Gemini API.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ MCP server for [OpenCode](https://opencode.ai) that adds vision capabilities —
 ## Setup
 
 ```bash
-cd ~/mcp-vision
+cd ~/opencode-simple-vision-mcp
 npm install
 cp .env.example .env
 ```
@@ -27,7 +27,7 @@ GEMINI_MODEL=gemini-3.5-flash
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.0.1"}}}' \
-  | node ~/mcp-vision/server.mjs 2>/dev/null
+  | node ~/opencode-simple-vision-mcp/server.mjs 2>/dev/null
 ```
 
 Expected output: a JSON object with `result.serverInfo.name: "vision"`.
@@ -37,8 +37,13 @@ Expected output: a JSON object with `result.serverInfo.name: "vision"`.
 Find your Node.js path:
 
 ```bash
+# macOS / Linux
 which node
 # e.g. /opt/homebrew/bin/node
+
+# Windows (PowerShell)
+where node
+# e.g. C:\Program Files\nodejs\node.exe
 ```
 
 Add to `~/.config/opencode/opencode.json`:
@@ -48,7 +53,7 @@ Add to `~/.config/opencode/opencode.json`:
   "mcp": {
     "vision": {
       "type": "local",
-      "command": ["/opt/homebrew/bin/node", "/Users/YOURUSER/mcp-vision/server.mjs"],
+      "command": ["/opt/homebrew/bin/node", "/Users/YOURUSER/opencode-simple-vision-mcp/server.mjs"],
       "enabled": true
     }
   }
@@ -57,13 +62,18 @@ Add to `~/.config/opencode/opencode.json`:
 
 All variables are loaded from `.env` in the project directory.
 
-Replace `/Users/YOURUSER/` with your actual username. Use the full Node.js path from `which node` (OpenCode does not inherit the shell PATH).
+Replace `/Users/YOURUSER/` with your actual username. Use the full Node.js path from `which node` / `where node` (OpenCode does not inherit the shell PATH).
 
 ## Usage
 
 ```bash
+# macOS / Linux
 analyze_image /Users/YOURUSER/Desktop/screenshot.png
 analyze_image /path/to/image.jpg "What UI elements can you see?"
+
+# Windows
+analyze_image C:\Users\YOURUSER\Desktop\screenshot.png
+analyze_image C:\path\to\image.jpg "What UI elements can you see?"
 ```
 
 ## Supported formats
@@ -86,4 +96,4 @@ analyze_image /path/to/image.jpg "What UI elements can you see?"
 
 **404 from Gemini API:** The configured model may be deprecated — set `GEMINI_MODEL` to `gemini-3.5-flash` in `.env`.
 
-**`File not found`:** Always use absolute paths (no `~/` tilde notation).
+**`File not found`:** Always use absolute paths (no `~/` tilde notation). The script resolves `~/Desktop` automatically for generated images.
