@@ -64,6 +64,10 @@ All variables are loaded from `.env` in the project directory.
 
 Replace `/Users/YOURUSER/` with your actual username. Use the full Node.js path from `which node` / `where node` (OpenCode does not inherit the shell PATH).
 
+> **Do NOT use `~` in the `command` array.** Node does not expand tilde — `~/mcp-server/...` will be treated as a literal path and the server will fail to start with `Cannot find module`. Always use the full absolute path (e.g. `/Users/YOURUSER/mcp-server/...` on macOS, `C:\Users\YOURUSER\mcp-server\...` on Windows).
+
+> **nvm users:** The Node path is version-specific (e.g. `/Users/YOURUSER/.nvm/versions/node/v24.14.1/bin/node`). When you update Node via `nvm install`, this path changes and you must update the config. To avoid this, symlink a stable path (e.g. `ln -s "$(which node)" ~/.local/bin/node`) and use `~/.local/bin/node` (or `/usr/local/bin/node` if writable) in the config.
+
 ## Usage
 
 ```bash
@@ -89,7 +93,7 @@ analyze_image C:\path\to\image.jpg "What UI elements can you see?"
 
 ## Troubleshooting
 
-**Status `failed` in OpenCode:** Run the handshake test. If you get a JSON response, the issue is the Node.js path in your config.
+**Status `failed` in OpenCode:** Run the handshake test. If you get a JSON response, the issue is the Node.js path in your config. The most common cause is using `~` in the `command` array — Node does not expand tilde, so `["node", "~/mcp-server/.../server.mjs"]` fails with `Cannot find module`. Use absolute paths for both the Node binary and the script.
 
 
 **`GEMINI_API_KEY` not found:** Make sure `.env` exists in the project directory and contains the key (no quotes around the value).

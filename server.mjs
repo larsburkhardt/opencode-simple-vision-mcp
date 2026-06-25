@@ -10,7 +10,7 @@ import { homedir } from "os";
 import { config } from "dotenv";
 import sharp from "sharp";
 
-config({ path: fileURLToPath(new URL(".env", import.meta.url)) });
+config({ path: fileURLToPath(new URL(".env", import.meta.url)), quiet: true });
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
